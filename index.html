@@ -52,38 +52,34 @@
 </head>
 <body>
 
-<!-- Banner Trường học -->
 <div class="school-banner">
     <p>SỞ GIÁO DỤC VÀ ĐÀO TẠO TÂY NINH</p>
     <h1>TRƯỜNG THPT NGUYỄN CHÍ THANH</h1>
 </div>
 
 <div class="container">
-    <h2>TRA CỨU ĐIỂM HK1 - KHỐI 10</h2>
+    <h2>HỆ THỐNG TRA CỨU ĐIỂM HK1</h2>
     
     <div class="search-box">
         <div class="input-group">
-            <label>1. Chọn lớp học</label>
+            <label>1. Chọn khối</label>
+            <select id="grade-select">
+                <option value="10">Khối 10</option>
+                <option value="11">Khối 11</option>
+                <option value="12">Khối 12</option>
+            </select>
+        </div>
+
+        <div class="input-group">
+            <label>2. Chọn lớp học</label>
             <select id="class-select">
-                <option value="10A1">10A1</option>
-                <option value="10A2">10A2</option>
-                <option value="10A3">10A3</option>
-                <option value="10A4">10A4</option>
-                <option value="10A5">10A5</option>
-                <option value="10A6">10A6</option>
-                <option value="10A7">10A7</option>
-                <option value="10A8">10A8</option>
-                <option value="10A9">10A9</option>
-                <option value="10A10">10A10</option>
-                <option value="10A11">10A11</option>
-                <option value="10A12">10A12</option>
-                <option value="10A13">10A13</option>
+                <!-- Danh sách lớp sẽ được tạo tự động bằng Javascript -->
             </select>
             <div id="status-msg" class="status-msg"></div>
         </div>
 
         <div class="input-group">
-            <label>2. Mã định danh (Bộ GD&ĐT)</label>
+            <label>3. Mã định danh (Bộ GD&ĐT)</label>
             <input type="text" id="search-id" placeholder="Nhập mã định danh của học sinh">
         </div>
         
@@ -122,32 +118,66 @@
 </div>
 
 <script>
-    let studentDataMap = {}; // Lưu dữ liệu học sinh của lớp đang được load
+    let studentDataMap = {}; 
 
-    // Tự động load dữ liệu lớp 10A1 ngay khi vừa mở trang web
-    window.onload = function() {
-        loadClassData();
+    // Cấu hình danh sách lớp cho từng khối
+    const classConfig = {
+        "10": ["10A1", "10A2", "10A3", "10A4", "10A5", "10A6", "10A7", "10A8", "10A9", "10A10", "10A11", "10A12", "10A13"],
+        "11": ["11A1", "11A2", "11A3", "11A4", "11A5", "11A6", "11A7", "11A8", "11A9", "11A10"],
+        "12": ["12A1", "12A2", "12A3", "12A4", "12A5", "12A6", "12A7", "12A8", "12A9", "12A10"]
     };
 
-    // Tự động load lại file dữ liệu mới khi đổi lớp trong combobox
+    // Hàm cập nhật danh sách lớp dựa trên khối
+    function populateClasses() {
+        let grade = document.getElementById('grade-select').value;
+        let classSelect = document.getElementById('class-select');
+        
+        // Xóa danh sách cũ
+        classSelect.innerHTML = '';
+        
+        // Thêm danh sách mới
+        classConfig[grade].forEach(className => {
+            let option = document.createElement('option');
+            option.value = className;
+            option.textContent = className;
+            classSelect.appendChild(option);
+        });
+    }
+
+    // Lắng nghe sự kiện đổi Khối
+    document.getElementById('grade-select').addEventListener('change', function() {
+        populateClasses();
+        document.getElementById('result-container').style.display = 'none';
+        document.getElementById('error-msg').innerText = '';
+        loadClassData();
+    });
+
+    // Lắng nghe sự kiện đổi Lớp
     document.getElementById('class-select').addEventListener('change', function() {
         document.getElementById('result-container').style.display = 'none';
         document.getElementById('error-msg').innerText = '';
         loadClassData();
     });
 
-    // Hàm gọi file tĩnh bằng Fetch API
+    // Chạy mặc định khi load trang
+    window.onload = function() {
+        populateClasses();
+        loadClassData();
+    };
+
     async function loadClassData() {
+        let selectedGrade = document.getElementById('grade-select').value;
         let selectedClass = document.getElementById('class-select').value;
         let statusMsg = document.getElementById('status-msg');
         
         statusMsg.innerHTML = `⏳ Đang kết nối dữ liệu lớp ${selectedClass}...`;
         statusMsg.className = "status-msg";
-        studentDataMap = {}; // Reset data
+        studentDataMap = {}; 
 
         try {
-            // Đọc file từ thư mục KHOI_10 mặc định trên server
-            let response = await fetch(`./KHOI_10/${selectedClass}.xlsx`);
+            // Đường dẫn thay đổi động theo Khối: ./KHOI_10/..., ./KHOI_11/..., ./KHOI_12/...
+            let folderName = `KHOI_${selectedGrade}`;
+            let response = await fetch(`./${folderName}/${selectedClass}.xlsx`);
             
             if (!response.ok) {
                 throw new Error("Không tìm thấy file");
@@ -220,11 +250,11 @@
         }
     }
 
-    // Xử lý tra cứu
     function searchStudent() {
         let rawSearchInput = document.getElementById('search-id').value;
         let resultContainer = document.getElementById('result-container');
         let errorMsg = document.getElementById('error-msg');
+        let selectedClass = document.getElementById('class-select').value;
 
         resultContainer.style.display = 'none';
         errorMsg.innerText = '';
@@ -267,7 +297,7 @@
 
             resultContainer.style.display = 'block';
         } else {
-            errorMsg.innerText = `Không tìm thấy học sinh mã "${rawSearchInput}" trong danh sách lớp ${document.getElementById('class-select').value}.`;
+            errorMsg.innerText = `Không tìm thấy học sinh mã "${rawSearchInput}" trong danh sách lớp ${selectedClass}.`;
         }
     }
 </script>
